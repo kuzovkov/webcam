@@ -1,91 +1,88 @@
-<!-- CSS -->
-<style>
-    #my_camera{
-        width: 320px;
-        height: 240px;
-        border: 1px solid black;
-    }
-</style>
+<?php
+/**
+ * Created by PhpStorm.
+ * User: user1
+ * Date: 22.05.16
+ * Time: 21:18
+ */
+if(session_status() !== PHP_SESSION_ACTIVE ) session_start();
+require_once ('../include/common.inc.php');
 
-<!-- -->
-<div id="my_camera"></div>
-<fieldset>
-    <legend>Webcam settings</legend>
-    <label>Resolution</label>
-    <select name="resolution" id="res">
-        <option value="320:240">320:240</option>
-        <option value="640:480">640:480</option>
-    </select>
-    <label>File type</label>
-    <select name="type" id="type">
-        <option value="jpeg">jpeg</option>
-        <option value="png">png</option>
-    </select>
+$pages = 'include/page/';
+$scripts = 'include/script/';
+$root_dir = ''; /*если скрипт не в корневом каталоге сервера*/
 
-    <label>Quality</label>
-    <input type="number" max="100", min="20" value="90" id="quality"/>
-    <input type=button value="Configure" onClick="configure()">
-
-</fieldset>
-
-<input type=button value="Take Snapshot" onClick="take_snapshot()">
-<input type=button value="Save Snapshot" onClick="saveSnap()">
-
-<div id="results" ></div>
-<div><a href="/images/">Images</a> </div>
-<!-- Script -->
-<script type="text/javascript" src="webcam/webcam.min.js"></script>
-
-<!-- Code to handle taking the snapshot and displaying it locally -->
-<script language="JavaScript">
-var type = 'jpeg';
-    // Configure a few settings and attach camera
-    function configure(){
-        Webcam.reset();
-        var width = parseInt(document.getElementById('res').value.split(':')[0]);
-        var height = parseInt(document.getElementById('res').value.split(':')[1]);
-        type = document.getElementById('type').value;
-        var quality = parseInt(document.getElementById('quality').value);
-        Webcam.set({
-            width: width,
-            height: height,
-            dest_width: width,
-            dest_height: height,
-            image_format: type,
-            jpeg_quality: quality
-        });
-        Webcam.attach( '#my_camera' );
-    }
-    // A button for taking snaps
+$routes = array(
+    '/' => $pages . 'index.php',
+    '/upload' => $scripts . 'upload.php',
+    '/images' => $pages . 'images.php',
+    /*
+    '/login' => $pages . 'login.php',
+    '/auth' => $scripts . 'auth.php',
+    '/settings' => $pages . 'settings.php',
+    '404' => $pages . '404.php',
+    '/upload' => $scripts . 'upload.php',
+    '/get_email_data' => $scripts . 'get_email_data.php',
+    '/del-all' => array($scripts . 'action.php',array('action' => 'del-all')),
+    '/mark-as-nosend' => array($scripts . 'action.php',array('action' => 'mark-as-nosend')),
+    '/mark-as-send' => array($scripts . 'action.php',array('action' => 'mark-as-send')),
+    '/del-sended' => array($scripts . 'action.php',array('action' => 'del-sended')),
+    '/set-data' => $pages . '/email_form.php',
+    '/sended' => array($pages . 'index.php', array('type'=>'sended')),
+    '/nosended' => array($pages . 'index.php', array('type'=>'nosended')),
+    '/reset-db' => array($scripts . 'action.php', array('action' => 'reset-db')),
+    '/get-list-emails' => $pages . 'list_data.php',
+    '/send-email' => array($scripts . 'action.php', array('action' => 'send-email')),
+    '/images' => $pages . 'img.php',
+    '/img-upload' => $scripts . 'img_upload.php',
+    '/del-images' => $scripts . 'img_del.php',
+    '/save-data' => $scripts . 'save_data.php',
+    '/get_email_report' => $scripts . 'get_email_report.php',
+    '/help' => $pages . 'help.php',
+    '/change-pass' => $pages . 'change_pass.php',
+    */
+);
 
 
-    // preload shutter audio clip
-    var shutter = new Audio();
-    shutter.autoplay = false;
-    shutter.src = navigator.userAgent.match(/Firefox/) ? '/sound/shutter.ogg' : '/sound/shutter.mp3';
 
-    function take_snapshot() {
-        // play sound effect
-        shutter.play();
+if (isset($_SERVER['REQUEST_URI'])){
 
-        // take snapshot and get image data
-        Webcam.snap( function(data_uri) {
-            // display results in page
-            document.getElementById('results').innerHTML =
-                '<img id="imageprev" src="'+data_uri+'"/>';
-        } );
+    $real_uri = $_SERVER['REQUEST_URI'];
 
+    if (($p = strpos($real_uri, '?')) === false){
+        $uri = substr(rtrim($real_uri, '/') , 0);
+    }else{
+        $uri = substr($real_uri, 0, strpos(rtrim($real_uri, '/'), '?'));
     }
 
-    function saveSnap(){
-        // Get base64 value from <img id='imageprev'> source
-        var base64image = document.getElementById("imageprev").src;
-
-        Webcam.upload( base64image, '/upload.php?type=' + type, function(code, text) {
-            console.log(code);
-            console.log(text);
-        });
-
+    /*учет случая когда скрипт не в корневом каталоге сервера*/
+    if (strlen($root_dir) && strpos($uri, $root_dir) === 0){
+        $uri = substr($uri, strlen($root_dir));
     }
-</script>
+    if ($uri === '')
+        $uri = '/';
 
+    /**авторизация**/
+    //if (!Auth::isAuth() && !in_array($uri, array('/login', '/auth'))) {  header('Location: /login'); exit();}
+    /**авторизация**/
+
+    if (isset($routes[$uri])){
+        if(is_array($routes[$uri])){
+            if (isset($routes[$uri][1]) && is_array($routes[$uri][1]))
+                foreach($routes[$uri][1] as $key => $val)
+                    $_GET[$key] = $val;
+            $require = '../' . $routes[$uri][0];
+        }else{
+            $require = '../' . $routes[$uri];
+        }
+
+    }else{
+
+        $require = '../' . $routes['404'];
+    }
+
+    require_once ($require);
+
+}else{
+    echo 'Access not allow';
+}
